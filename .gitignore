@@ -1,0 +1,16 @@
+# 运行产物（打印服务）
+printsvc/output/
+printsvc/port.txt
+printsvc/printsvc.exe
+printsvc/printsvc.exe~
+
+# Python
+__pycache__/
+*.pyc
+
+# 操作系统
+Thumbs.db
+.DS_Store
+
+# IDE / 本地数据
+.codebuddy/

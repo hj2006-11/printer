@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>CCPC 本地打印服务</title>
+<style>
+body { font-family: "Microsoft YaHei", sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; }
+h1 { font-size: 22px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+.status-bar { padding: 8px 12px; border-radius: 4px; margin-bottom: 20px; font-size: 14px; }
+.status-bar.ok { background: #e6f7e6; color: #2e7d32; }
+.status-bar.fail { background: #ffebee; color: #c62828; }
+.tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.tab { padding: 8px 16px; border: 1px solid #ccc; background: #f5f5f5; cursor: pointer; border-radius: 4px; }
+.tab.active { background: #333; color: #fff; border-color: #333; }
+.form-group { margin-bottom: 12px; }
+label { display: block; font-size: 14px; margin-bottom: 4px; font-weight: bold; }
+input, textarea, select { width: 100%; padding: 8px; box-sizing: border-box; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; }
+textarea { resize: vertical; min-height: 120px; font-family: Consolas, monospace; }
+button { padding: 10px 24px; font-size: 14px; background: #1976d2; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+button:hover { background: #1565c0; }
+.result { margin-top: 16px; padding: 12px; background: #f5f5f5; border-radius: 4px; font-size: 14px; }
+.result pre { white-space: pre-wrap; word-break: break-all; margin: 0; }
+.hidden { display: none; }
+</style>
+</head>
+<body>
+<h1>CCPC 本地打印服务</h1>
+<div id="statusBar" class="status-bar">探活中...</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('ticket')">气球小票</div>
+  <div class="tab" onclick="switchTab('code')">代码打印</div>
+</div>
+
+<!-- 气球小票表单 -->
+<div id="ticketForm">
+  <div class="form-group">
+    <label>队名</label>
+    <input type="text" id="team" placeholder="Team A" value="Team A">
+  </div>
+  <div class="form-group">
+    <label>题号</label>
+    <input type="text" id="problem" placeholder="A" value="A">
+  </div>
+  <div class="form-group">
+    <label>通过时间</label>
+    <input type="text" id="passTime" placeholder="2026-08-20 10:23:45" value="2026-08-20 10:23:45">
+  </div>
+  <button onclick="submitTicket()">提交打印</button>
+</div>
+
+<!-- 代码打印表单 -->
+<div id="codeForm" class="hidden">
+  <div class="form-group">
+    <label>语言</label>
+    <select id="lang">
+      <option value="cpp">C++</option>
+      <option value="c">C</option>
+      <option value="java">Java</option>
+      <option value="python">Python</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label>源代码</label>
+    <textarea id="source" placeholder="#include <bits/stdc++.h>
+using namespace std;
+int main() {
+    // 你好，世界
+    cout << "Hello World" << endl;
+    return 0;
+}"></textarea>
+  </div>
+  <button onclick="submitCode()">提交打印</button>
+</div>
+
+<div id="result" class="result hidden"></div>
+
+<script>
+// 自动获取服务端口（页面由服务托管，直接用location），接口契约 v1.0
+const API_BASE = window.location.origin + '/api/v1';
+
+// 页面加载时探活
+window.onload = function() {
+  healthCheck();
+  setInterval(healthCheck, 3000);
+};
+
+function healthCheck() {
+  fetch(API_BASE + '/healthz')
+    .then(r => r.json())
+    .then(data => {
+      const bar = document.getElementById('statusBar');
+      bar.textContent = '服务在线 (' + API_BASE + ')';
+      bar.className = 'status-bar ok';
+    })
+    .catch(err => {
+      const bar = document.getElementById('statusBar');
+      bar.textContent = '服务离线 - ' + err.message;
+      bar.className = 'status-bar fail';
+    });
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  if (tab === 'ticket') {
+    document.getElementById('ticketForm').classList.remove('hidden');
+    document.getElementById('codeForm').classList.add('hidden');
+  } else {
+    document.getElementById('ticketForm').classList.add('hidden');
+    document.getElementById('codeForm').classList.remove('hidden');
+  }
+}
+
+function submitTicket() {
+  const payload = {
+    type: 'ticket',
+    data: {
+      team: document.getElementById('team').value,
+      problem: document.getElementById('problem').value,
+      pass_time: document.getElementById('passTime').value
+    }
+  };
+  doSubmit(payload);
+}
+
+function submitCode() {
+  const payload = {
+    type: 'code',
+    data: {
+      lang: document.getElementById('lang').value,
+      source: document.getElementById('source').value
+    }
+  };
+  doSubmit(payload);
+}
+
+function doSubmit(payload) {
+  fetch(API_BASE + '/tasks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(data => {
+    showResult('提交成功: ' + JSON.stringify(data, null, 2));
+    if (data.task_id) {
+      pollStatus(data.task_id);
+    }
+  })
+  .catch(err => showResult('提交失败: ' + err.message));
+}
+
+function pollStatus(taskId) {
+  const iv = setInterval(() => {
+    fetch(API_BASE + '/tasks/' + taskId)
+      .then(r => r.json())
+      .then(data => {
+        showResult('任务状态 [' + taskId + ']: ' + JSON.stringify(data, null, 2));
+        if (data.status === 'completed' || data.status === 'failed') {
+          clearInterval(iv);
+        }
+      })
+      .catch(err => {
+        showResult('查询失败: ' + err.message);
+        clearInterval(iv);
+      });
+  }, 1500);
+}
+
+function showResult(text) {
+  const el = document.getElementById('result');
+  el.classList.remove('hidden');
+  el.innerHTML = '<pre>' + text + '</pre>';
+}
+</script>
+</body>
+</html>

@@ -1,16 +1,39 @@
-# 运行产物（打印服务）
-printsvc/output/
-printsvc/port.txt
+# ============ .gitignore 说明（第4天报告引用）============
+# 忽略原则：密钥/依赖目录/构建产物/本机环境文件/大型可再生成内容不得进入仓库。
+# 历史日报、数据模型、项目备忘从仓库移除，本机保留（不重复提交，见第5节）。
+
+# 1) 构建产物：随时可由 `go build` 再生成，体积大且含本机路径信息
 printsvc/printsvc.exe
 printsvc/printsvc.exe~
 
-# Python
+# 2) 运行产物：服务运行期自动生成，可按步骤重新产生
+printsvc/output/          # PDF/HTML 中间产物（每次任务重新生成）
+printsvc/port.txt         # 本次实际监听端口（启动时写入，每次不同）
+printsvc/pid.txt          # 后台启动时记录的进程ID文件
+
+# 3) Python 缓存：解释器自动生成，可再生成
 __pycache__/
 *.pyc
 
-# 操作系统
+# 4) 会话临时文件
+_tmp*.txt
+
+# 5) 历史交付文档（本机保留、仓库不收）
+#    仓库只放代码、接口契约与当轮报告；历史日报/数据模型/项目备忘留在本机
+第1天报告_*.md
+第1天报告_*.docx
+第2天报告_*.md
+第2天报告_*.docx
+第3天报告_*.md
+第3天报告_*.docx
+数据模型_*.md
+数据模型_*.docx
+03_项目备忘_*.md
+03_项目备忘_*.docx
+
+# 6) 操作系统/编辑器垃圾文件
 Thumbs.db
 .DS_Store
 
-# IDE / 本地数据
+# 7) IDE 本地数据（.codebuddy 为工程数据目录，不入库）
 .codebuddy/

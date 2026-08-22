@@ -130,8 +130,7 @@ body { width: 58mm; margin: 0; padding: 4mm; font-family: "Microsoft YaHei", "Si
 
 // codeHTML 生成代码打印HTML（80mm窄纸宽，语法高亮）
 func codeHTML(source, lang string) string {
-	// 简单语法高亮：用<pre>包裹，关键字粗体（极简实现）
-	escaped := template.HTMLEscapeString(source)
+	// 源码由 html/template 在 {{.Source}} 处自动转义，保证特殊字符安全显示
 	const tpl = `<!DOCTYPE html>
 <html>
 <head>
@@ -151,7 +150,7 @@ pre { white-space: pre-wrap; word-wrap: break-word; margin: 0; line-height: 1.4;
 	t, _ := template.New("code").Parse(tpl)
 	var buf strings.Builder
 	t.Execute(&buf, map[string]string{
-		"Source": escaped, "Lang": lang,
+		"Source": source, "Lang": lang,
 	})
 	return buf.String()
 }

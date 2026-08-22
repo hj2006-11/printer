@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"path/filepath"
 	"time"
 
+	"ccpc-printsvc/internal/static"
 	"ccpc-printsvc/internal/task"
 )
 
@@ -36,9 +36,15 @@ func (s *Server) Run() error {
 	mux.HandleFunc("/api/v1/tasks", s.handleCreateTask)
 	mux.HandleFunc("/api/v1/tasks/{task_id}", s.handleGetTask)
 
-	// 静态页面（从internal/static目录或嵌入二进制）
-	staticDir := filepath.Join("internal", "static")
-	mux.Handle("/", http.FileServer(http.Dir(staticDir)))
+	// 静态页面（go:embed 内嵌二进制，运行不依赖工作目录）
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(static.IndexHTML))
+	})
 
 	return http.ListenAndServe(s.addr, LogMiddleware(cors(mux)))
 }

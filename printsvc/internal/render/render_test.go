@@ -19,3 +19,24 @@ func TestCodeHTMLEscapesSourceOnce(t *testing.T) {
 		t.Fatalf("expected single-escaped source, got: %s", html)
 	}
 }
+
+// TestTicketHTMLDefaultPassTime 回归测试：接口约定 pass_time 为空时渲染为 --。
+func TestTicketHTMLDefaultPassTime(t *testing.T) {
+	html := ticketHTML("Team A", "A", "")
+	if !strings.Contains(html, "通过时间：</span>--") {
+		t.Fatalf("expected -- for empty pass_time, got: %s", html)
+	}
+	// 非空时原样展示，不被替换
+	html2 := ticketHTML("Team A", "A", "2026-08-20 10:23:45")
+	if strings.Contains(html2, "通过时间：</span>--") || !strings.Contains(html2, "通过时间：</span>2026-08-20 10:23:45") {
+		t.Fatalf("expected pass_time shown as-is, got: %s", html2)
+	}
+}
+
+// TestCodeHTMLDefaultLang 回归测试：接口约定 lang 为空时渲染为 text。
+func TestCodeHTMLDefaultLang(t *testing.T) {
+	html := codeHTML("int a;", "")
+	if !strings.Contains(html, "代码打印 (text)") {
+		t.Fatalf("expected text lang default, got: %s", html)
+	}
+}

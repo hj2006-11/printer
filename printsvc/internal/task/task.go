@@ -108,14 +108,16 @@ func (q *Queue) worker() {
 		}
 
 		if err != nil {
-			q.update(t.ID, StatusFailed, err.Error(), "")
+			// 接口约定错误码表：异步失败经 status=failed + message 呈现，RENDER_FAILED 标识渲染失败
+			q.update(t.ID, StatusFailed, "RENDER_FAILED: "+err.Error(), "")
 			log.Printf("[task] %s 渲染失败: %v", t.ID, err)
 			continue
 		}
 
 		// 打印/PDF输出
 		if err := q.prn.Print(pdfPath); err != nil {
-			q.update(t.ID, StatusFailed, err.Error(), pdfPath)
+			// 契约错误码 PRINT_FAILED（无实体打印机时 PDF 兜底，正常情况下不可达）
+			q.update(t.ID, StatusFailed, "PRINT_FAILED: "+err.Error(), pdfPath)
 			log.Printf("[task] %s 打印失败: %v", t.ID, err)
 			continue
 		}

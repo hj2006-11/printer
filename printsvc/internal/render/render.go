@@ -100,6 +100,9 @@ func findChrome() string {
 
 // ticketHTML 生成气球小票HTML（58mm窄纸宽）
 func ticketHTML(team, problem, passTime string) string {
+	if passTime == "" {
+		passTime = "--" // 接口约定：pass_time 为空时渲染为 --
+	}
 	const tpl = `<!DOCTYPE html>
 <html>
 <head>
@@ -130,6 +133,9 @@ body { width: 58mm; margin: 0; padding: 4mm; font-family: "Microsoft YaHei", "Si
 
 // codeHTML 生成代码打印HTML（80mm窄纸宽，语法高亮）
 func codeHTML(source, lang string) string {
+	if lang == "" {
+		lang = "text" // 接口约定：lang 为空时渲染为 text
+	}
 	// 源码由 html/template 在 {{.Source}} 处自动转义，保证特殊字符安全显示
 	const tpl = `<!DOCTYPE html>
 <html>

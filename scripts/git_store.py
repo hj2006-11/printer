@@ -39,10 +39,22 @@ def main():
         print("git repo initialized at", root)
     elif cmd == "add":
         repo = porcelain.open_repo(root)
-        porcelain.add(repo, ".")
-        print("staged all files (respecting .gitignore)")
+        paths = sys.argv[2:] if len(sys.argv) > 2 else ["."]
+        porcelain.add(repo, paths)
+        print("staged paths:", paths)
         status = porcelain.status(repo)
         print("staged:", sorted(status.staged.get("add", []))[:20])
+    elif cmd == "rmcached":
+        repo = porcelain.open_repo(root)
+        idx = repo.open_index()
+        for p in sys.argv[2:]:
+            key = p.replace("\\", "/").encode("utf-8")
+            if key in idx._byname:
+                del idx._byname[key]
+                print("removed from index:", p)
+            else:
+                print("not in index:", p)
+        idx.write()
     elif cmd == "commit":
         repo = porcelain.open_repo(root)
         if len(sys.argv) >= 3:

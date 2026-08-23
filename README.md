@@ -22,6 +22,7 @@ printsvc/                   # 服务代码（Go module: ccpc-printsvc）
   internal/render/          # 无头 Chromium 渲染 HTML → PDF（ticket 58mm / code 80mm）
   internal/printer/         # 系统默认打印机（Win: PowerShell / Linux: lp），PDF 兜底
   internal/static/          # Web 前端（提交表单 + 探活 + 状态轮询）
+  DEMO.md                   # 主路径演示说明（D5）：环境前提 + 编号步骤 + 预期现象
 scripts/                    # 文档转换/校验/提交脚本（md→docx、git 提交等）
 README.md                   # 本文件：安装、启动、停止、验证
 接口书面约定_20260821.md    # 接口契约 v1.0（REST 资源化 + 按类型分组）
@@ -80,4 +81,4 @@ curl.exe http://127.0.0.1:18210/api/v1/tasks/<task_id>
 
 ## .gitignore 说明
 
-忽略规则按「密钥 / 依赖目录 / 构建产物 / 本机环境文件 / 可再生成内容」分类，逐条说明见 `.gitignore` 文件内注释。要点：构建产物（`printsvc.exe`）、运行产物（`output/`、`port.txt`、`pid.txt`）、Python 缓存（`__pycache__/`、`*.pyc`）、历史交付文档（第 1~3 天报告、数据模型、项目备忘——本机保留、仓库不收）一律不入库。
+忽略规则按「密钥 / 依赖目录 / 构建产物 / 本机环境文件 / 可再生成内容」分类，逐条说明见 `.gitignore` 文件内注释。要点：构建产物（`printsvc.exe`）、运行产物（`output/`、`port.txt`、`pid.txt`）、Python 缓存（`__pycache__/`、`*.pyc`）、全部实验报告（第 1~5 天报告、数据模型、项目备忘——本机保留、仓库不收）一律不入库。仓库形态参考 [CCPCOJ](https://github.com/CSGrandeur/CCPCOJ)：只含代码、接口契约与操作文档，不含实验报告。

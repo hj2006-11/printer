@@ -6,9 +6,6 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
-
-	"ccpc-printsvc/internal/printer"
-	"ccpc-printsvc/internal/render"
 )
 
 // Status 任务状态
@@ -42,19 +39,32 @@ type TaskData struct {
 	Source string `json:"source,omitempty"`
 }
 
+// Renderer 渲染器接口：ticket 58mm / code 80mm，返回PDF路径。
+// render.Engine 实现该接口（D6 为可测试性抽象，行为不变）。
+type Renderer interface {
+	RenderTicket(team, problem, passTime string) (string, error)
+	RenderCode(source, lang string) (string, error)
+}
+
+// Printer 打印机接口：输出PDF到默认打印机，PDF兜底。
+// printer.Adapter 实现该接口（D6 为可测试性抽象，行为不变）。
+type Printer interface {
+	Print(pdfPath string) error
+}
+
 // Queue 任务队列与状态管理器
 type Queue struct {
 	ch      chan *Task
 	tasks   map[string]*Task
 	mu      sync.RWMutex
-	rdr     *render.Engine
-	prn     *printer.Adapter
+	rdr     Renderer
+	prn     Printer
 	outDir  string
 	counter int
 }
 
 // NewQueue 创建队列，rdr=渲染引擎, prn=打印机适配器
-func NewQueue(rdr *render.Engine, prn *printer.Adapter, outDir string) *Queue {
+func NewQueue(rdr Renderer, prn Printer, outDir string) *Queue {
 	return &Queue{
 		ch:     make(chan *Task, 10),
 		tasks:  make(map[string]*Task),
@@ -84,12 +94,17 @@ func (q *Queue) Submit(t *Task) string {
 	return t.ID
 }
 
-// Get 查询任务状态
-func (q *Queue) Get(id string) (*Task, bool) {
+// Get 查询任务状态。
+// 返回任务副本而非内部指针：调用方在锁外读取字段不会与 worker 的 update 写冲突（D6 竞态修复，
+// 由 go test -race 在 G2 边界测试中发现：原实现返回 *Task 导致 Get 读与 worker 写同一对象）。
+func (q *Queue) Get(id string) (Task, bool) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 	t, ok := q.tasks[id]
-	return t, ok
+	if !ok {
+		return Task{}, false
+	}
+	return *t, true
 }
 
 func (q *Queue) worker() {

@@ -14,7 +14,11 @@ import (
 
 func main() {
 	// 1. 端口协商：默认18210，回退18210~18220
-	listenAddr := port.FindAvailablePort(18210, 18220)
+	listenAddr, err := port.FindAvailablePort(18210, 18220)
+	if err != nil {
+		// G3 优雅降级：全范围占用时明确报错退出，不再 panic
+		log.Fatalf("[main] %v", err)
+	}
 	log.Printf("[main] 服务监听地址: %s", listenAddr)
 
 	// 2. 工作目录（用于存放PDF输出和port.txt）

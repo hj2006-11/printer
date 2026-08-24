@@ -5,6 +5,7 @@
 # 1) 构建产物：随时可由 `go build` 再生成，体积大且含本机路径信息
 printsvc/printsvc.exe
 printsvc/printsvc.exe~
+printsvc/dist/             # 交叉编译产物（Linux/Windows 发布二进制）
 
 # 2) 运行产物：服务运行期自动生成，可按步骤重新产生
 printsvc/output/          # PDF/HTML 中间产物（每次任务重新生成）
@@ -17,6 +18,7 @@ __pycache__/
 
 # 4) 会话临时文件
 _tmp*.txt
+scripts/_extracted/      # docx 临时提取文本（本机分析用）
 
 # 5) 实验报告与交付文档（本机保留、仓库不收）
 #    仓库只放代码与接口契约；实验报告（含当轮）不入库，规范参考 CCPCOJ 仓库形态
@@ -30,10 +32,17 @@ _tmp*.txt
 第4天报告_*.docx
 第5天报告_*.md
 第5天报告_*.docx
+第6天报告_*.md
+第6天报告_*.docx
 数据模型_*.md
 数据模型_*.docx
 03_项目备忘_*.md
 03_项目备忘_*.docx
+04_项目备忘_*.md
+04_项目备忘_*.docx
+技术知识点_*.md
+范围控制_*.md
+范围控制_*.docx
 
 # 6) 操作系统/编辑器垃圾文件
 Thumbs.db

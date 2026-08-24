@@ -16,18 +16,34 @@
 ```
 printsvc/                   # 服务代码（Go module: ccpc-printsvc）
   cmd/printsvc/main.go      # 主入口：端口协商、装配模块、启动 HTTP 服务
-  internal/port/            # 端口协商（18210~18220 回退，写入 port.txt）
+  internal/port/            # 端口协商（18210~18220 回退，全占用优雅报错，写入 port.txt）
   internal/server/          # HTTP API（v1.0）与静态页面托管
-  internal/task/            # 内存任务队列（单 worker 串行）+ 状态机
+  internal/task/            # 内存任务队列（单 worker 串行）+ 状态机 + 边界测试（D6）
   internal/render/          # 无头 Chromium 渲染 HTML → PDF（ticket 58mm / code 80mm）
   internal/printer/         # 系统默认打印机（Win: PowerShell / Linux: lp），PDF 兜底
   internal/static/          # Web 前端（提交表单 + 探活 + 状态轮询）
-  DEMO.md                   # 主路径演示说明（D5）：环境前提 + 编号步骤 + 预期现象
+  harness/                  # Harness（D6）：规则 R1~R9 / 禁令 P1~P7 / 检查脚本
+    HARNESS.md              #   验证基准文档
+    run_checks.ps1          #   Windows PowerShell 检查脚本
+    run_checks.sh           #   Linux bash 检查脚本（真机验证用）
+  DEMO.md                   # 主路径演示说明（D5，D6 已更新）：环境前提 + 编号步骤 + 预期现象
 scripts/                    # 文档转换/校验/提交脚本（md→docx、git 提交等）
 README.md                   # 本文件：安装、启动、停止、验证
 接口书面约定_20260821.md    # 接口契约 v1.0（REST 资源化 + 按类型分组）
 module_diagram_d2.png       # 模块图（第 2 天产出）
 ```
+
+## 测试与验证（D6 Harness）
+
+```bash
+cd printsvc
+go vet ./...                                # 静态检查
+go test -race -count=1 ./...                # 全部单元测试（含竞态检测）
+powershell -ExecutionPolicy Bypass -File harness/run_checks.ps1   # 一键检查（R1~R9）
+# Linux 真机（D7）：bash harness/run_checks.sh
+```
+
+覆盖范围：端口全占用优雅降级（`internal/port`）、队列串行/状态机/并发竞态（`internal/task`）、渲染转义只执行一次（`internal/render`）。规则 R1~R9 与禁令 P1~P7 见 `printsvc/harness/HARNESS.md`。
 
 ## 依赖安装
 

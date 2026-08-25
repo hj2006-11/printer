@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"ccpc-printsvc/internal/static"
@@ -27,8 +29,20 @@ func New(addr string, queue *task.Queue, outDir string) *Server {
 	}
 }
 
-// Run 启动HTTP服务
+// Run 启动HTTP服务（G7：显式配置读写/空闲超时，防止慢连接长期占用）
 func (s *Server) Run() error {
+	srv := &http.Server{
+		Addr:         s.addr,
+		Handler:      LogMiddleware(cors(s.mux())),
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+	return srv.ListenAndServe()
+}
+
+// mux 构建路由（供 Run 与测试共用）
+func (s *Server) mux() *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// API路由（契约 v1.0）
@@ -46,7 +60,7 @@ func (s *Server) Run() error {
 		_, _ = w.Write([]byte(static.IndexHTML))
 	})
 
-	return http.ListenAndServe(s.addr, LogMiddleware(cors(mux)))
+	return mux
 }
 
 // GET /api/v1/healthz 探活
@@ -88,6 +102,8 @@ func (s *Server) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// G7：限制请求体大小（1MB，防超大 body 占内存；代码 source 远小于此）
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req submitRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "INVALID_ARGUMENT", "invalid JSON body: "+err.Error())
@@ -180,18 +196,36 @@ func writeError(w http.ResponseWriter, status int, code, message string) {
 	})
 }
 
-// cors 简单的CORS中间件，允许本地页面跨域探活
+// cors CORS中间件（G7：只放行本机来源，不再全开 *）。
+// 威胁模型：服务仅绑定 127.0.0.1，任意网站跨域调用（驱动打印/读取任务）应被拒绝；
+// 本机页面（同源）请求不带 Origin 头，不受影响。
 func cors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if origin := r.Header.Get("Origin"); origin != "" && isLocalOrigin(origin) {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		}
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// isLocalOrigin 判断 Origin 是否为本机来源（127.0.0.1 / ::1 / localhost）
+func isLocalOrigin(origin string) bool {
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return false
+	}
+	h := strings.ToLower(u.Hostname())
+	return h == "127.0.0.1" || h == "::1" || h == "localhost"
 }
 
 // LogMiddleware 请求日志中间件

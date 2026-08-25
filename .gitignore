@@ -11,6 +11,7 @@ printsvc/dist/             # 交叉编译产物（Linux/Windows 发布二进制�
 printsvc/output/          # PDF/HTML 中间产物（每次任务重新生成）
 printsvc/port.txt         # 本次实际监听端口（启动时写入，每次不同）
 printsvc/pid.txt          # 后台启动时记录的进程ID文件
+printsvc/docs/images/     # 实验报告截图素材（本机保留，不入库）
 
 # 3) Python 缓存：解释器自动生成，可再生成
 __pycache__/
@@ -34,12 +35,16 @@ scripts/_extracted/      # docx 临时提取文本（本机分析用）
 第5天报告_*.docx
 第6天报告_*.md
 第6天报告_*.docx
+第7天报告_*.md
+第7天报告_*.docx
 数据模型_*.md
 数据模型_*.docx
 03_项目备忘_*.md
 03_项目备忘_*.docx
 04_项目备忘_*.md
 04_项目备忘_*.docx
+05_项目备忘_*.md
+05_项目备忘_*.docx
 技术知识点_*.md
 技术知识点_*.docx
 范围控制_*.md

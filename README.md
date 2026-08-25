@@ -10,6 +10,7 @@
 - 任务队列与状态：提交即入队，返回任务 ID；可查询排队中 / 已完成 / 失败及原因。
 - 端口协商：默认监听 127.0.0.1:18210，被占用时在 18210~18220 内自动回退，实际端口写入 `port.txt` 与日志。
 - 无实体打印机时打印到 PDF 兜底，PDF 产物路径即验证依据。
+- 指定打印机：设置环境变量 `CCPC_PRINTER=<打印机名>` 可指定目标打印机（D7 新增；Windows 用 printui 切换默认后打印并恢复，Linux 用 `lp -d`）。未设置时使用系统默认打印机。
 
 ## 目录结构
 
@@ -20,8 +21,8 @@ printsvc/                   # 服务代码（Go module: ccpc-printsvc）
   internal/server/          # HTTP API（v1.0）与静态页面托管
   internal/task/            # 内存任务队列（单 worker 串行）+ 状态机 + 边界测试（D6）
   internal/render/          # 无头 Chromium 渲染 HTML → PDF（ticket 58mm / code 80mm）
-  internal/printer/         # 系统默认打印机（Win: PowerShell / Linux: lp），PDF 兜底
-  internal/static/          # Web 前端（提交表单 + 探活 + 状态轮询）
+  internal/printer/         # 默认打印机（Win: PowerShell / Linux: lp），PDF 兜底；CCPC_PRINTER 可指定打印机（D7）
+  internal/static/          # Web 前端（提交表单 + 探活 + 状态轮询 + 最近任务列表，D7）
   harness/                  # Harness（D6）：规则 R1~R9 / 禁令 P1~P7 / 检查脚本
     HARNESS.md              #   验证基准文档
     run_checks.ps1          #   Windows PowerShell 检查脚本
@@ -40,7 +41,7 @@ cd printsvc
 go vet ./...                                # 静态检查
 go test -race -count=1 ./...                # 全部单元测试（含竞态检测）
 powershell -ExecutionPolicy Bypass -File harness/run_checks.ps1   # 一键检查（R1~R9）
-# Linux 真机（D7）：bash harness/run_checks.sh
+# Linux 真机（待 D8/演示前）：bash harness/run_checks.sh
 ```
 
 覆盖范围：端口全占用优雅降级（`internal/port`）、队列串行/状态机/并发竞态（`internal/task`）、渲染转义只执行一次（`internal/render`）。规则 R1~R9 与禁令 P1~P7 见 `printsvc/harness/HARNESS.md`。

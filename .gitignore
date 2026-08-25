@@ -1,17 +1,23 @@
 # ============ .gitignore 说明（第4天报告引用）============
 # 忽略原则：密钥/依赖目录/构建产物/本机环境文件/大型可再生成内容不得进入仓库。
 # 历史日报、数据模型、项目备忘从仓库移除，本机保留（不重复提交，见第5节）。
+# 注：git 规范不支持行内注释，本文件注释一律独立成行（2026-08-25 规范化，规则语义不变）。
 
 # 1) 构建产物：随时可由 `go build` 再生成，体积大且含本机路径信息
 printsvc/printsvc.exe
 printsvc/printsvc.exe~
-printsvc/dist/             # 交叉编译产物（Linux/Windows 发布二进制）
+# 交叉编译产物（Linux/Windows 发布二进制）
+printsvc/dist/
 
 # 2) 运行产物：服务运行期自动生成，可按步骤重新产生
-printsvc/output/          # PDF/HTML 中间产物（每次任务重新生成）
-printsvc/port.txt         # 本次实际监听端口（启动时写入，每次不同）
-printsvc/pid.txt          # 后台启动时记录的进程ID文件
-printsvc/docs/images/     # 实验报告截图素材（本机保留，不入库）
+# PDF/HTML 中间产物（每次任务重新生成）
+printsvc/output/
+# 本次实际监听端口（启动时写入，每次不同，任意目录）
+port.txt
+# 后台启动时记录的进程ID文件（任意目录）
+pid.txt
+# 实验报告截图素材（本机保留，不入库）
+printsvc/docs/images/
 
 # 3) Python 缓存：解释器自动生成，可再生成
 __pycache__/
@@ -19,7 +25,8 @@ __pycache__/
 
 # 4) 会话临时文件
 _tmp*.txt
-scripts/_extracted/      # docx 临时提取文本（本机分析用）
+# docx 临时提取文本（本机分析用）
+scripts/_extracted/
 
 # 5) 实验报告与交付文档（本机保留、仓库不收）
 #    仓库只放代码与接口契约；实验报告（含当轮）不入库，规范参考 CCPCOJ 仓库形态

@@ -11,6 +11,7 @@
 - 端口协商：默认监听 127.0.0.1:18210，被占用时在 18210~18220 内自动回退，实际端口写入 `port.txt` 与日志。
 - 无实体打印机时打印到 PDF 兜底，PDF 产物路径即验证依据。
 - 指定打印机：设置环境变量 `CCPC_PRINTER=<打印机名>` 可指定目标打印机（D7 新增；Windows 用 printui 切换默认后打印并恢复，Linux 用 `lp -d`）。未设置时使用系统默认打印机。
+- 安全边界（D8 G7）：CORS 仅放行本机来源（127.0.0.1/localhost）、请求体上限 1MB、HTTP Server 显式配置读写/空闲超时。
 
 ## 目录结构
 
@@ -18,7 +19,7 @@
 printsvc/                   # 服务代码（Go module: ccpc-printsvc）
   cmd/printsvc/main.go      # 主入口：端口协商、装配模块、启动 HTTP 服务
   internal/port/            # 端口协商（18210~18220 回退，全占用优雅报错，写入 port.txt）
-  internal/server/          # HTTP API（v1.0）与静态页面托管
+  internal/server/          # HTTP API（v1.0）与静态页面托管；G7 安全强化（CORS 白名单/body 上限/Server 超时）+ server_test.go
   internal/task/            # 内存任务队列（单 worker 串行）+ 状态机 + 边界测试（D6）
   internal/render/          # 无头 Chromium 渲染 HTML → PDF（ticket 58mm / code 80mm）
   internal/printer/         # 默认打印机（Win: PowerShell / Linux: lp），PDF 兜底；CCPC_PRINTER 可指定打印机（D7）
@@ -27,7 +28,7 @@ printsvc/                   # 服务代码（Go module: ccpc-printsvc）
     HARNESS.md              #   验证基准文档
     run_checks.ps1          #   Windows PowerShell 检查脚本
     run_checks.sh           #   Linux bash 检查脚本（真机验证用）
-  DEMO.md                   # 主路径演示说明（D5，D6 已更新）：环境前提 + 编号步骤 + 预期现象
+  DEMO.md                   # 主路径演示说明（D5，D6/D8 已更新）：环境前提 + 编号步骤 + 预期现象
 scripts/                    # 文档转换/校验/提交脚本（md→docx、git 提交等）
 README.md                   # 本文件：安装、启动、停止、验证
 接口书面约定_20260821.md    # 接口契约 v1.0（REST 资源化 + 按类型分组）
@@ -44,7 +45,7 @@ powershell -ExecutionPolicy Bypass -File harness/run_checks.ps1   # 一键检查
 # Linux 真机（待 D8/演示前）：bash harness/run_checks.sh
 ```
 
-覆盖范围：端口全占用优雅降级（`internal/port`）、队列串行/状态机/并发竞态（`internal/task`）、渲染转义只执行一次（`internal/render`）。规则 R1~R9 与禁令 P1~P7 见 `printsvc/harness/HARNESS.md`。
+覆盖范围：端口全占用优雅降级（`internal/port`）、队列串行/状态机/并发竞态（`internal/task`）、渲染转义只执行一次（`internal/render`）、CORS/请求体上限/契约错误码（`internal/server`，D8 新增）、printer 打印机名解析（`internal/printer`，D7 复核新增）。规则 R1~R9 与禁令 P1~P7 见 `printsvc/harness/HARNESS.md`。验收清单见 `验收自测表_20260826.md`，安全审计见 `审查与安全清单_20260826.md`。
 
 ## 依赖安装
 
@@ -98,4 +99,4 @@ curl.exe http://127.0.0.1:18210/api/v1/tasks/<task_id>
 
 ## .gitignore 说明
 
-忽略规则按「密钥 / 依赖目录 / 构建产物 / 本机环境文件 / 可再生成内容」分类，逐条说明见 `.gitignore` 文件内注释。要点：构建产物（`printsvc.exe`）、运行产物（`output/`、`port.txt`、`pid.txt`）、Python 缓存（`__pycache__/`、`*.pyc`）、全部实验报告（第 1~5 天报告、数据模型、项目备忘——本机保留、仓库不收）一律不入库。仓库形态参考 [CCPCOJ](https://github.com/CSGrandeur/CCPCOJ)：只含代码、接口契约与操作文档，不含实验报告。
+忽略规则按「密钥 / 依赖目录 / 构建产物 / 本机环境文件 / 可再生成内容」分类，逐条说明见 `.gitignore` 文件内注释。要点：构建产物（`printsvc.exe`）、运行产物（`output/`、`port.txt`、`pid.txt`）、Python 缓存（`__pycache__/`、`*.pyc`）、全部实验报告（第 1~8 天报告、数据模型、项目备忘、技术知识点、验收自测表、审查清单——本机保留、仓库不收）一律不入库。仓库形态参考 [CCPCOJ](https://github.com/CSGrandeur/CCPCOJ)：只含代码、接口契约与操作文档，不含实验报告。

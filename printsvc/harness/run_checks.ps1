@@ -79,7 +79,7 @@ if (Test-Path "$root\printsvc.exe") {
 # ---- 禁令 P4/P5：仓库洁净度（git 由 scripts/git_store.py 负责，此处提示）----
 Write-Host "==> P4/P5 检查提示" -ForegroundColor Cyan
 Write-Host "    运行产物不入库：.gitignore 已覆盖 output/, port.txt, pid.txt, dist/, printsvc.exe"
-Write-Host "    实验报告不入库：.gitignore 已覆盖 第N天报告/数据模型/项目备忘"
+Write-Host "    实验报告不入库：.gitignore 已覆盖 第N天报告/数据模型/项目备忘/技术知识点/范围控制/验收自测表/审查与安全清单（D8 起）"
 Write-Host "    提交前请人工复核: python scripts/git_store.py status"
 
 # ---- 汇总 ----

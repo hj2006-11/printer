@@ -42,7 +42,7 @@ cd printsvc
 go vet ./...                                # 静态检查
 go test -race -count=1 ./...                # 全部单元测试（含竞态检测）
 powershell -ExecutionPolicy Bypass -File harness/run_checks.ps1   # 一键检查（R1~R9）
-# Linux 真机（待 D8/演示前）：bash harness/run_checks.sh
+# Linux 真机（待演示前借机验证）：bash harness/run_checks.sh
 ```
 
 覆盖范围：端口全占用优雅降级（`internal/port`）、队列串行/状态机/并发竞态（`internal/task`）、渲染转义只执行一次（`internal/render`）、CORS/请求体上限/契约错误码（`internal/server`，D8 新增）、printer 打印机名解析（`internal/printer`，D7 复核新增）。规则 R1~R9 与禁令 P1~P7 见 `printsvc/harness/HARNESS.md`。验收清单见 `验收自测表_20260826.md`，安全审计见 `审查与安全清单_20260826.md`。

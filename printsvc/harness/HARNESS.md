@@ -111,7 +111,7 @@ Harness 全量校验（run_checks.ps1 / run_checks.sh 全绿）（W5）
 | S5 | 异步失败 | 任务 `status=failed`，`message` 带 `RENDER_FAILED:` / `PRINT_FAILED:` 前缀，不占用同步状态码 |
 | S6 | 统一错误（400/404/405） | `{"error":{"code":"INVALID_ARGUMENT\|NOT_FOUND\|METHOD_NOT_ALLOWED","message":"<可读信息>"}}` |
 | S7 | 时间格式 | `created_at`：RFC3339（如 `2026-08-21T10:30:00+08:00`）；`pass_time`：`YYYY-MM-DD HH:MM:SS` |
-| S8 | 字段命名 | 一律 snake_case；UTF-8 JSON，`Content-Type: application/json`；CORS `*` |
+| S8 | 字段命名 | 一律 snake_case；UTF-8 JSON，`Content-Type: application/json`；CORS 本机来源白名单（D8 G7：`Origin` ∈ `127.0.0.1`/`::1`/`localhost`，其余不设 CORS 头） |
 
 校验方式：契约冒烟（run_checks 内置 healthz 探活）+ 契约用例逐条对照；不符合即打回重跑，不进入下一阶段。
 

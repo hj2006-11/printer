@@ -21,6 +21,16 @@ button:hover { background: #1565c0; }
 .result { margin-top: 16px; padding: 12px; background: #f5f5f5; border-radius: 4px; font-size: 14px; }
 .result pre { white-space: pre-wrap; word-break: break-all; margin: 0; }
 .hidden { display: none; }
+.task-list { margin-top: 24px; }
+.task-list h2 { font-size: 16px; border-bottom: 1px solid #ccc; padding-bottom: 6px; }
+.task-list table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.task-list th, .task-list td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; word-break: break-all; }
+.task-list th { background: #f5f5f5; }
+.badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; color: #fff; }
+.badge.pending { background: #f9a825; }
+.badge.completed { background: #2e7d32; }
+.badge.failed { background: #c62828; }
+.task-list button { margin-top: 8px; padding: 6px 14px; font-size: 12px; background: #757575; }
 </style>
 </head>
 <body>
@@ -75,14 +85,28 @@ int main() {
 
 <div id="result" class="result hidden"></div>
 
+<!-- D7 G5：最近任务列表（前端本地记录 + 轮询，接口仍为契约 v1.0，无新增后端接口） -->
+<div class="task-list">
+  <h2>最近任务</h2>
+  <table id="taskTable">
+    <thead>
+      <tr><th>任务ID</th><th>类型</th><th>状态</th><th>提交时间</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <button id="clearTasks" onclick="clearTasks()">清空列表</button>
+</div>
+
 <script>
 // 自动获取服务端口（页面由服务托管，直接用location），接口契约 v1.0
 const API_BASE = window.location.origin + '/api/v1';
+const LS_KEY = 'ccpc_tasks';
 
-// 页面加载时探活
+// 页面加载时探活 + 恢复任务列表
 window.onload = function() {
   healthCheck();
   setInterval(healthCheck, 3000);
+  renderTaskList();
 };
 
 function healthCheck() {
@@ -135,6 +159,58 @@ function submitCode() {
   doSubmit(payload);
 }
 
+// G5：任务列表 —— 读取本地记录，新增任务后持久化，终态保留、非终态轮询
+function getStoredTasks() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; }
+  catch (e) { return []; }
+}
+
+function storeTask(t) {
+  const list = getStoredTasks();
+  list.unshift(t); // 最新在前
+  localStorage.setItem(LS_KEY, JSON.stringify(list.slice(0, 20))); // 最多保留20条
+}
+
+function renderTaskList() {
+  const list = getStoredTasks();
+  const tbody = document.querySelector('#taskTable tbody');
+  tbody.innerHTML = '';
+  list.forEach(t => {
+    const tr = document.createElement('tr');
+    const st = document.createElement('td');
+    st.className = 'badge ' + (t.status || 'pending');
+    st.textContent = t.status || 'pending';
+    tr.innerHTML = '<td>' + t.task_id + '</td><td>' + t.type + '</td>';
+    tr.appendChild(st);
+    const ct = document.createElement('td');
+    ct.textContent = t.created_at || '--';
+    tr.appendChild(ct);
+    tbody.appendChild(tr);
+  });
+}
+
+// 轮询所有非终态任务，更新列表与结果区
+function pollAll() {
+  const list = getStoredTasks();
+  list.forEach(t => {
+    if (t.status === 'completed' || t.status === 'failed') return;
+    fetch(API_BASE + '/tasks/' + t.task_id)
+      .then(r => r.json())
+      .then(data => {
+        // 注意：t 是本次轮询开始时 list 中的对象；若用 getStoredTasks() 重新解析，
+        // 会拿到 localStorage 中的旧状态数组，导致状态永远刷不进去（D7 联调发现）。
+        t.status = data.status;
+        t.created_at = data.created_at || t.created_at;
+        localStorage.setItem(LS_KEY, JSON.stringify(list));
+        renderTaskList();
+        if (data.status === 'completed' || data.status === 'failed') {
+          showResult('任务终态 [' + t.task_id + ']: ' + JSON.stringify(data, null, 2));
+        }
+      })
+      .catch(() => {}); // 服务短暂离线时静默，探活条会提示
+  });
+}
+
 function doSubmit(payload) {
   fetch(API_BASE + '/tasks', {
     method: 'POST',
@@ -145,27 +221,20 @@ function doSubmit(payload) {
   .then(data => {
     showResult('提交成功: ' + JSON.stringify(data, null, 2));
     if (data.task_id) {
-      pollStatus(data.task_id);
+      storeTask({ task_id: data.task_id, type: payload.type, status: data.status, created_at: data.created_at });
+      renderTaskList();
+      pollAll();
     }
   })
   .catch(err => showResult('提交失败: ' + err.message));
 }
 
-function pollStatus(taskId) {
-  const iv = setInterval(() => {
-    fetch(API_BASE + '/tasks/' + taskId)
-      .then(r => r.json())
-      .then(data => {
-        showResult('任务状态 [' + taskId + ']: ' + JSON.stringify(data, null, 2));
-        if (data.status === 'completed' || data.status === 'failed') {
-          clearInterval(iv);
-        }
-      })
-      .catch(err => {
-        showResult('查询失败: ' + err.message);
-        clearInterval(iv);
-      });
-  }, 1500);
+// 每1.5秒轮询一次所有非终态任务
+setInterval(pollAll, 1500);
+
+function clearTasks() {
+  localStorage.removeItem(LS_KEY);
+  renderTaskList();
 }
 
 function showResult(text) {

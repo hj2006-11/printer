@@ -177,19 +177,27 @@ function renderTaskList() {
   tbody.innerHTML = '';
   list.forEach(t => {
     const tr = document.createElement('tr');
+    const idTd = document.createElement('td');
+    idTd.textContent = t.task_id || '--';
+    const typeTd = document.createElement('td');
+    typeTd.textContent = t.type || '--';
     const st = document.createElement('td');
     st.className = 'badge ' + (t.status || 'pending');
     st.textContent = t.status || 'pending';
-    tr.innerHTML = '<td>' + t.task_id + '</td><td>' + t.type + '</td>';
-    tr.appendChild(st);
     const ct = document.createElement('td');
     ct.textContent = t.created_at || '--';
+    tr.appendChild(idTd);
+    tr.appendChild(typeTd);
+    tr.appendChild(st);
     tr.appendChild(ct);
     tbody.appendChild(tr);
   });
 }
 
 // 轮询所有非终态任务，更新列表与结果区
+// 注意：写回时必须基于最新持久化列表按 task_id 定位更新，不能写回轮询开始时的
+// list 快照（轮询期间用户可能已提交新任务/清空列表，写回快照会覆盖丢失新任务，
+// 或把已清空的列表又写回——D7 复核发现并修复）。
 function pollAll() {
   const list = getStoredTasks();
   list.forEach(t => {
@@ -197,11 +205,13 @@ function pollAll() {
     fetch(API_BASE + '/tasks/' + t.task_id)
       .then(r => r.json())
       .then(data => {
-        // 注意：t 是本次轮询开始时 list 中的对象；若用 getStoredTasks() 重新解析，
-        // 会拿到 localStorage 中的旧状态数组，导致状态永远刷不进去（D7 联调发现）。
-        t.status = data.status;
-        t.created_at = data.created_at || t.created_at;
-        localStorage.setItem(LS_KEY, JSON.stringify(list));
+        const cur = getStoredTasks();
+        const i = cur.findIndex(x => x.task_id === t.task_id);
+        if (i >= 0) {
+          cur[i].status = data.status;
+          cur[i].created_at = data.created_at || cur[i].created_at;
+          localStorage.setItem(LS_KEY, JSON.stringify(cur));
+        }
         renderTaskList();
         if (data.status === 'completed' || data.status === 'failed') {
           showResult('任务终态 [' + t.task_id + ']: ' + JSON.stringify(data, null, 2));
@@ -240,7 +250,10 @@ function clearTasks() {
 function showResult(text) {
   const el = document.getElementById('result');
   el.classList.remove('hidden');
-  el.innerHTML = '<pre>' + text + '</pre>';
+  const pre = document.createElement('pre');
+  pre.textContent = text; // textContent 而非 innerHTML：任务终态 JSON 可能含用户源代码（<、& 等字符）
+  el.textContent = '';
+  el.appendChild(pre);
 }
 </script>
 </body>

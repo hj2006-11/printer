@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -27,16 +28,24 @@ func (a *Adapter) Print(pdfPath string) error {
 
 	if runtime.GOOS == "windows" {
 		if printerName != "" {
-			// Windows：指定打印机 —— printui 切换默认 -> 打印 -> 恢复原默认
+			// Windows：指定打印机 —— printui 切换默认 -> 打印 -> 恢复原默认（脚本内 try/finally；
+			// 若超时进程被杀，finally 可能不执行，由 Go 侧兜底恢复，见下）。
+			oldName := windowsDefaultPrinter()
 			script := fmt.Sprintf(
-				"$old = (Get-ItemProperty 'HKCU:\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows' -ErrorAction SilentlyContinue).Device; "+
-					"$oldName = if ($old) { ($old -split ',')[0] } else { '' }; "+
-					"& rundll32 printui.dll,PrintUIEntry /y /n '%s' | Out-Null; "+
-					"Start-Process -FilePath '%s' -Verb Print -Wait; "+
-					"if ($oldName -and $oldName -ne '%s') { & rundll32 printui.dll,PrintUIEntry /y /n $oldName | Out-Null }",
-				printerName, pdfPath, printerName)
+				"$oldName = '%s'; "+
+					"try { & rundll32 printui.dll,PrintUIEntry /y /n '%s' | Out-Null; Start-Process -FilePath '%s' -Verb Print -Wait } "+
+					"finally { if ($oldName -and $oldName -ne '%s') { & rundll32 printui.dll,PrintUIEntry /y /n $oldName | Out-Null } }",
+				oldName, printerName, pdfPath, printerName)
 			cmd := exec.CommandContext(ctx, "powershell", "-Command", script)
 			out, err := cmd.CombinedOutput()
+			// 超时 kill 时脚本内 finally 可能不执行，这里兜底恢复默认打印机，避免影响后续打印
+			if err != nil && oldName != "" && oldName != printerName {
+				restore := exec.CommandContext(context.Background(), "powershell", "-Command",
+					fmt.Sprintf("& rundll32 printui.dll,PrintUIEntry /y /n '%s' | Out-Null", oldName))
+				if rerr := restore.Run(); rerr != nil {
+					fmt.Fprintf(os.Stderr, "[printer] 恢复默认打印机[%s]失败: %v\n", oldName, rerr)
+				}
+			}
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "[printer] 打印到指定打印机[%s]失败（PDF已保留）: %s, err=%v, output=%s\n", printerName, pdfPath, err, string(out))
 				return nil // 不视为失败，PDF兜底
@@ -66,4 +75,25 @@ func (a *Adapter) Print(pdfPath string) error {
 		}
 	}
 	return nil
+}
+
+// windowsDefaultPrinter 读取 Windows 当前默认打印机名（注册表 Device 键第一段）。
+// 读取在 Go 侧完成：即使 PowerShell 脚本后续被超时杀死，oldName 也已固化，可用于兜底恢复。
+func windowsDefaultPrinter() string {
+	cmd := exec.CommandContext(context.Background(), "powershell", "-Command",
+		"(Get-ItemProperty 'HKCU:\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows' -ErrorAction SilentlyContinue).Device")
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return parsePrinterName(string(out))
+}
+
+// parsePrinterName 解析注册表 Device 键值（形如 "打印机名,驱动,端口"），取第一段。
+func parsePrinterName(device string) string {
+	name := strings.TrimSpace(device)
+	if i := strings.IndexByte(name, ','); i >= 0 {
+		name = name[:i]
+	}
+	return name
 }

@@ -112,6 +112,30 @@ func TestCreateTicketMissingTeam(t *testing.T) {
 	}
 }
 
+func TestCreateTaskInvalidType(t *testing.T) {
+	ts := newTestServer(t)
+	resp := post(t, ts.URL+"/api/v1/tasks", `{"type":"bogus","data":{}}`, nil)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", resp.StatusCode)
+	}
+	if !strings.Contains(readBody(resp), "INVALID_ARGUMENT") {
+		t.Fatalf("body lacks INVALID_ARGUMENT: %s", readBody(resp))
+	}
+}
+
+func TestGetTaskNotFound(t *testing.T) {
+	ts := newTestServer(t)
+	resp := get(t, ts.URL+"/api/v1/tasks/T9999-0000000000", nil)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", resp.StatusCode)
+	}
+	if !strings.Contains(readBody(resp), "NOT_FOUND") {
+		t.Fatalf("body lacks NOT_FOUND: %s", readBody(resp))
+	}
+}
+
 // --- G7 强化项 ---
 
 func TestCreateTaskBodyTooLarge(t *testing.T) {

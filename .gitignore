@@ -25,6 +25,9 @@ __pycache__/
 
 # 4) 会话临时文件
 _tmp*.txt
+# 临时脚本与日志（本机分析/端到端验证用）
+_tmp*.ps1
+_tmp*.log
 # docx 临时提取文本（本机分析用）
 scripts/_extracted/
 
@@ -58,6 +61,8 @@ scripts/_extracted/
 06_项目备忘_*.docx
 技术知识点_*.md
 技术知识点_*.docx
+实验大报告_*.md
+实验大报告_*.docx
 范围控制_*.md
 范围控制_*.docx
 验收自测表_*.md

@@ -63,6 +63,9 @@ scripts/_extracted/
 技术知识点_*.docx
 实验大报告_*.md
 实验大报告_*.docx
+结课大报告_*.pptx
+# 结课 PPT 生成脚本（汇报材料，本机保留）
+printsvc/docs/ppt/
 范围控制_*.md
 范围控制_*.docx
 验收自测表_*.md
